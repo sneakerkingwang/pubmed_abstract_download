@@ -1,3 +1,4 @@
+import time
 import openpyxl
 from Bio import Entrez
 from datetime import datetime, timedelta
@@ -26,6 +27,9 @@ def search_and_save_abstracts(keyword, start_date, end_date):
     # Fetch the records for each PubMed ID and extract the abstracts, publication date, journal, author names, and DOI
     records = []
     for pmid in pmids:
+        # Delay between API requests
+        time.sleep(1)
+
         record_handle = Entrez.efetch(db="pubmed", id=pmid, retmode="xml")
         record = Entrez.read(record_handle)["PubmedArticle"][0]
         records.append(record)
@@ -49,7 +53,14 @@ def search_and_save_abstracts(keyword, start_date, end_date):
         abstract = record["MedlineCitation"]["Article"].get("Abstract", {}).get("AbstractText", [""])[0]
         publication_date = record["MedlineCitation"]["Article"]["Journal"]["JournalIssue"]["PubDate"]
         journal = record["MedlineCitation"]["Article"]["Journal"]["Title"]
-        authors = [author["LastName"] + " " + author["Initials"] for author in record["MedlineCitation"]["Article"]["AuthorList"]]
+        authors = []
+        author_list = record["MedlineCitation"]["Article"]["AuthorList"]
+        if isinstance(author_list, list):
+            # Multiple authors
+            authors = [f"{author.get('LastName', '')} {author.get('Initials', '')}" for author in author_list]
+        elif isinstance(author_list, dict):
+            # Single author
+            authors = [f"{author_list.get('LastName', '')} {author_list.get('Initials', '')}"]
 
         # Get the DOI if available
         doi = ""
