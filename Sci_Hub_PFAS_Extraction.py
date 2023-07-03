@@ -78,6 +78,10 @@ def search_and_save_abstracts(keyword, start_date, end_date):
 # Streamlit App
 def main():
     st.title("PubMed Abstract Search")
+    st.markdown(
+    'This is an app to extract the abstract of papers contain the keyword you search.\n\nCreated by <span style="color: blue;"><b>Michael Wang</b></span>',
+    unsafe_allow_html=True
+    )
 
     # Sidebar - Date Range and Keyword Inputs
     st.sidebar.title("Search Filters")
