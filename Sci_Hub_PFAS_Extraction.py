@@ -23,7 +23,7 @@ def search_and_save_abstracts(keyword, start_date, end_date):
     # Extract the list of PubMed IDs
     pmids = search_results["IdList"]
 
-    # Fetch the records for each PubMed ID and extract the abstracts, publication date, and journal information
+    # Fetch the records for each PubMed ID and extract the abstracts, publication date, journal, author names, and DOI
     records = []
     for pmid in pmids:
         record_handle = Entrez.efetch(db="pubmed", id=pmid, retmode="xml")
@@ -40,6 +40,8 @@ def search_and_save_abstracts(keyword, start_date, end_date):
     sheet.cell(row=1, column=2, value="Abstract")
     sheet.cell(row=1, column=3, value="Publication Date")
     sheet.cell(row=1, column=4, value="Journal")
+    sheet.cell(row=1, column=5, value="Authors")
+    sheet.cell(row=1, column=6, value="DOI")
 
     # Write the article details to the spreadsheet
     for i, record in enumerate(records):
@@ -47,6 +49,12 @@ def search_and_save_abstracts(keyword, start_date, end_date):
         abstract = record["MedlineCitation"]["Article"].get("Abstract", {}).get("AbstractText", [""])[0]
         publication_date = record["MedlineCitation"]["Article"]["Journal"]["JournalIssue"]["PubDate"]
         journal = record["MedlineCitation"]["Article"]["Journal"]["Title"]
+        authors = [author["LastName"] + " " + author["Initials"] for author in record["MedlineCitation"]["Article"]["AuthorList"]]
+
+        # Get the DOI if available
+        doi = ""
+        if "ELocationID" in record["MedlineCitation"]["Article"]:
+            doi = record["MedlineCitation"]["Article"]["ELocationID"][0]
 
         # Convert the publication_date dictionary to a string format
         year = publication_date.get("Year", "")
@@ -58,6 +66,8 @@ def search_and_save_abstracts(keyword, start_date, end_date):
         sheet.cell(row=i + 2, column=2, value=abstract)
         sheet.cell(row=i + 2, column=3, value=publication_date_str)
         sheet.cell(row=i + 2, column=4, value=journal)
+        sheet.cell(row=i + 2, column=5, value=", ".join(authors))
+        sheet.cell(row=i + 2, column=6, value=doi)
 
     # Save the workbook
     output_file = f"{keyword.replace(' ', '_')}_abstracts.xlsx"
@@ -67,7 +77,7 @@ def search_and_save_abstracts(keyword, start_date, end_date):
     data = []
     for row in sheet.iter_rows(min_row=2, values_only=True):
         data.append(row)
-    df = pd.DataFrame(data, columns=["Title", "Abstract", "Publication Date", "Journal"])
+    df = pd.DataFrame(data, columns=["Title", "Abstract", "Publication Date", "Journal", "Authors", "DOI"])
 
     # Sort the DataFrame by the "Publication Date" column
     df.sort_values(by="Publication Date", inplace=True)
@@ -78,10 +88,6 @@ def search_and_save_abstracts(keyword, start_date, end_date):
 # Streamlit App
 def main():
     st.title("PubMed Abstract Search")
-    st.markdown(
-    'This is an app to extract the abstract of papers contain the keyword you search.\n\nCreated by <span style="color: blue;"><b>Michael Wang</b></span>',
-    unsafe_allow_html=True
-    )
 
     # Sidebar - Date Range and Keyword Inputs
     st.sidebar.title("Search Filters")
