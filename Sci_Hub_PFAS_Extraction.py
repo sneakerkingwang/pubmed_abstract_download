@@ -24,7 +24,7 @@ def search_and_save_abstracts(keyword, start_date, end_date):
     # Extract the list of PubMed IDs
     pmids = search_results["IdList"]
 
-    # Fetch the records for each PubMed ID and extract the abstracts, publication date, journal, author names, and DOI
+    # Fetch the records for each PubMed ID and extract the abstracts, publication date, and journal information
     records = []
     for pmid in pmids:
         # Delay between API requests
@@ -53,19 +53,6 @@ def search_and_save_abstracts(keyword, start_date, end_date):
         abstract = record["MedlineCitation"]["Article"].get("Abstract", {}).get("AbstractText", [""])[0]
         publication_date = record["MedlineCitation"]["Article"]["Journal"]["JournalIssue"]["PubDate"]
         journal = record["MedlineCitation"]["Article"]["Journal"]["Title"]
-        authors = []
-        author_list = record["MedlineCitation"]["Article"]["AuthorList"]
-        if isinstance(author_list, list):
-            # Multiple authors
-            authors = [f"{author.get('LastName', '')} {author.get('Initials', '')}" for author in author_list]
-        elif isinstance(author_list, dict):
-            # Single author
-            authors = [f"{author_list.get('LastName', '')} {author_list.get('Initials', '')}"]
-
-        # Get the DOI if available
-        doi = ""
-        if "ELocationID" in record["MedlineCitation"]["Article"]:
-            doi = record["MedlineCitation"]["Article"]["ELocationID"][0]
 
         # Convert the publication_date dictionary to a string format
         year = publication_date.get("Year", "")
@@ -73,12 +60,26 @@ def search_and_save_abstracts(keyword, start_date, end_date):
         day = publication_date.get("Day", "")
         publication_date_str = f"{year} {month} {day}"
 
+        # Get the DOI if available
+        # Get the DOI if available
+        doi = ""
+        if "ELocationID" in record["MedlineCitation"]["Article"]:
+            e_location_ids = record["MedlineCitation"]["Article"]["ELocationID"]
+            if isinstance(e_location_ids, list) and len(e_location_ids) > 0:
+                doi = e_location_ids[0]
+
+        # Get the authors' names
+        author_list = record["MedlineCitation"]["Article"].get("AuthorList", [])
+        authors = []
+        if isinstance(author_list, list):
+            authors = [f"{author.get('LastName', '')} {author.get('Initials', '')}" for author in author_list]
+
         sheet.cell(row=i + 2, column=1, value=article_title)
         sheet.cell(row=i + 2, column=2, value=abstract)
         sheet.cell(row=i + 2, column=3, value=publication_date_str)
         sheet.cell(row=i + 2, column=4, value=journal)
         sheet.cell(row=i + 2, column=5, value=", ".join(authors))
-        sheet.cell(row=i + 2, column=6, value=doi)
+        sheet.cell(row=i + 2, column=6, value=doi if doi else "")
 
     # Save the workbook
     output_file = f"{keyword.replace(' ', '_')}_abstracts.xlsx"
